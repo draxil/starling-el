@@ -34,7 +34,7 @@ On various platforms you can hook emacs into more sophisticated password managem
 
 There is no ELPA etc for this yet, if you happen to use straight + use-package:
 
-#+begin_src 'elisp
+#+begin_src elisp
   (use-package plz
   :straight t)
   (use-package starling
@@ -57,7 +57,7 @@ Many! But some notable ones:
 
 * Internals you might be interested in!
 
-The ~starling--do~ function should allow easy access to other starling API endpoints I haven't bothered to use yet. See that functions documentation for more.
+The ~starling--do~ function should allow easy access to other starling API endpoints I haven't bothered to use yet. See that function's documentation for more.
 
 * Contributors
 
