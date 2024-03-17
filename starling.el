@@ -1,4 +1,4 @@
-;;; starling.el -- Staling bank info in emacs.
+;;; starling.el -- Staling bank info in emacs.  -*- lexical-binding: t -*-
 
 ;;; Commentary:
 ;;

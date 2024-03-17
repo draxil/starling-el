@@ -1,3 +1,9 @@
+;;; starling-test -- tests for starling -*- lexical-binding: t -*-
+
+
+;;; Commentary:
+;; Very minimal tests for starling.el
+
 (require 'starling)
 
    
