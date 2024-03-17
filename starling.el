@@ -10,6 +10,7 @@
 ;; Please see the LICENCE file.
 
 (require 'plz)
+(require 'auth-source)
 
 (defgroup starling ()
   "starling bank module")
