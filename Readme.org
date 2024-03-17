@@ -32,11 +32,17 @@ On various platforms you can hook emacs into more sophisticated password managem
 
 ** Install this package
 
-There is no ELPA etc for this yet so it's currently a case of cloning this repo and giving emacs access.
+There is no ELPA etc for this yet, if you happen to use straight + use-package:
 
-You'll need plz installed as well, using the method of your choice, or ~M-x package-install~ and choose plz.
+#+begin_src 'elisp
+  (use-package plz
+  :straight t)
+  (use-package starling
+  :straight `(starling :type git :host github :repo "draxil/starling-el"))
+#+end_src
 
-*TODO* MORE DETAIL HERE.
+
+Otherwise it's currently a case of cloning this repo and giving emacs access. You'll need plz installed as well, using the method of your choice, or ~M-x package-install~ and choose plz.
 
 ** Using the package
 
