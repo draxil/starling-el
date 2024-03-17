@@ -124,7 +124,6 @@ BODY optional, body to send in the request (TODO, not actually any use for this 
 (defun starling--display-cash (cash)
   "Display a starling cash value."
   ;; TODO care for currency?
-  (message "%s" cash)
   (starling--to-major (alist-get 'minorUnits cash)))
 
 (defun starling--to-major (units)
@@ -181,13 +180,13 @@ Also make it a string, for display purposes."
   (interactive)
   (pop-to-buffer "*Starling Spaces*" nil)
   (starling-spaces-mode)
-  (setq tabulated-list-entries (-non-nil (starling-space-table)))
+  (setq tabulated-list-entries (starling-space-table))
   (tabulated-list-print 1)
   )
 
 
 (defun starling--txns-since ()
-  (format-time-string "%F" (- (current-time) 2592000)))
+  (format-time-string "%FT00:00:00Z" (- (time-convert (current-time) 'integer) 2592000)))
 
 (defun starling--maybe-show-transactions ()
   "Possibly show transactions, if we're on a line with an id."
@@ -217,14 +216,13 @@ Also make it a string, for display purposes."
   ;; TODO space name?
   (pop-to-buffer "*Starling Trnsactions*" nil)
   (starling-transactions-mode)
-  (setq tabulated-list-entries (-non-nil (starling-transactions--table txns)))
+  (setq tabulated-list-entries (starling-transactions--table txns))
   (tabulated-list-print 1))
 
 (defun starling-transactions--table (txns)
   "Table for starling transactions TXNS."
   (mapcar
    (lambda (txn)
-     (message "%s" txn)
      (list
       (alist-get 'feedItemUid txn)
       (vector
@@ -257,5 +255,4 @@ Also make it a string, for display purposes."
   (upcase-initials (string-replace "_" " " (downcase category))))
 
 
-(message "%s" (mapcar (lambda (x) (alist-get 'minorUnits (alist-get 'balance x))) (starling--account-display-balances)))
 (provide 'starling)
