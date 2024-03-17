@@ -1,5 +1,13 @@
 ;;; starling.el -- Staling bank info in emacs.  -*- lexical-binding: t -*-
 
+;; Copyright (C) 2024 Joe Higton
+
+;; Author: Joe Higton <draxil@gmail.com>
+;; Version: 0.1.0
+;; Homepage: https://github.com/draxil/starling-el
+;; Keywords: banking, finance
+;; Package-Requires: ((emacs "28") (plz "0.7.2"))"
+
 ;;; Commentary:
 ;;
 ;; Get info from your starling bank account in Emacs!
@@ -8,6 +16,8 @@
 ;;; Licence:
 ;;
 ;; Please see the LICENCE file.
+
+;;; Code:
 
 (require 'plz)
 (require 'auth-source)
