@@ -42,7 +42,9 @@ There is no ELPA etc for this yet, if you happen to use straight + use-package:
 #+end_src
 
 
-Otherwise it's currently a case of cloning this repo and giving emacs access. You'll need plz installed as well, using the method of your choice, or ~M-x package-install~ and choose plz.
+Otherwise it's currently a case of cloning this repo and giving emacs access (see [[https://www.gnu.org/software/emacs/manual/html_node/emacs/Lisp-Libraries.html][here] for clues). You'll need plz installed as well, using the method of your choice, or ~M-x package-install~ and choose plz.
+
+Proper packaging will probably come if you bug me :)
 
 ** Using the package
 
