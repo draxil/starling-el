@@ -48,7 +48,10 @@ Proper packaging will probably come if you bug me :)
 
 ** Using the package
 
-Currently the only available UI is seen via ~M-x starling-spaces~ which should give a quick read on all your spaces. Press return (by default) on a space to see recent transactions.
+Currently:
+
+ + ~M-x starling-spaces~ which should give a quick read on all your spaces. Press return (by default) on a space to see recent transactions.
+ + ~M-x starling-insights~ whichs shows spending insights.
 
 * Limitations
 
@@ -64,3 +67,4 @@ The ~starling--do~ function should allow easy access to other starling API endpo
 * Contributors
 
 Joe - draxil@gmail.com
+Alex Drysdale - <reissuecardboard@duck.com>
