@@ -3,7 +3,8 @@
 ;; Copyright (C) 2024 Joe Higton
 
 ;; Author: Joe Higton <draxil@gmail.com>
-;; Version: 0.1.0
+;; Contributors: Alex Drysdale <reissuecardboard@duck.com>
+;; Version: 0.1.1
 ;; Homepage: https://github.com/draxil/starling-el
 ;; Keywords: banking, finance
 ;; Package-Requires: ((emacs "28") (plz "0.7.2"))"
@@ -265,5 +266,87 @@ Also make it a string, for display purposes."
   "Format a starling spending CATEGORY."
   (upcase-initials (string-replace "_" " " (downcase category))))
 
+;; Insights
+(defun starling--get-spending-insights (&optional year month)
+  "Display spending insights for a given YEAR and MONTH."
+  (let ((account-uid (starling--main-account-uuid))
+        (query-year (if year year (format-time-string "%Y")))
+        (query-month (if month month (format-time-string "%B"))))
+    (starling--do 'get (concat "api/v2/accounts/"
+                               account-uid
+                               "/spending-insights/spending-category?year="
+                               query-year
+                               "&month="
+                               (upcase query-month)))))
+
+(define-derived-mode
+  starling-insights-mode
+  tabulated-list-mode
+  "starling-insights-mode"
+  "Mode for viewing Starling insights."
+  (setq tabulated-list-format
+	[("Category" 20 t)
+     ("Total Spent" 20 t :right-align 't)
+     ("Total Received" 20 t :right-align 't)
+     ("Net" 8 t :right-align 't)
+     ("" 1 t)
+     ("Percentage" 20 t :right-align 't)
+     ("# Transactions" 10 t :right-align 't)])
+  (tabulated-list-init-header))
+
+
+(defun starling-insight--total-spent (insight)
+  "Total spent for an INSIGHT."
+  (number-to-string (alist-get 'totalSpent insight)))
+
+(defun starling-insight--total-recieved (insight)
+  "Total received for an INSIGHT."
+  (number-to-string (alist-get 'totalReceived insight)))
+
+(defun starling-insight--net-direction (insight)
+  "Get the net direction of the INSIGHT."
+  (if (string-equal (alist-get 'netDirection insight) "OUT") "-" "+"))
+
+(defun starling-insight--net (insight)
+  "Net spent for an INSIGHT."
+  (number-to-string (alist-get 'netSpend insight)))
+
+(defun starling-insight--percentage (insight)
+  "Percentage of spending for an INSIGHT."
+  (number-to-string (alist-get 'percentage insight)))
+
+(defun starling-insight--transaction-count (insight)
+  "Number of transactions for an INSIGHT."
+  (number-to-string (alist-get 'transactionCount insight)))
+
+(defun starling-insights--table (insights)
+  "Table for starling INSIGHTS."
+  (mapcar
+   (lambda (insight)
+     (list
+      (alist-get 'spendingCategory insight)
+      (vector
+       (starling--format-category (alist-get 'spendingCategory insight))
+       (starling-insight--total-spent insight)
+       (starling-insight--total-recieved insight)
+       (starling-insight--net insight)
+       (starling-insight--net-direction insight)
+       (starling-insight--percentage insight)
+       (starling-insight--transaction-count insight)
+       )))
+   (alist-get 'breakdown insights)))
+
+(defun starling--show-insights (insights)
+  "Show the insights for INSIGHTS."
+  (pop-to-buffer "*Starling Insights*" nil)
+  (starling-insights-mode)
+  (setq tabulated-list-entries (starling-insights--table insights))
+  (tabulated-list-print 1))
+
+(defun starling-insights ()
+  "Shows the starling insights for the current month."
+  (interactive)
+  (let ((insights (starling--get-spending-insights)))
+    (starling--show-insights insights)))
 
 (provide 'starling)
