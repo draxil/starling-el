@@ -1,3 +1,5 @@
+*Migration to codeberg* Note if you're seeing this on github, I'm moving primary development to [[https://codeberg.org/draxil/starling-el][codeberg]]. I'll try and push to github for a transition period, but to be sure of freshness, best go there instead.
+
 * What is this?
 
 If you bank with [[https://www.starlingbank.com/][starling bank]], you can get a personal API token which lets you access information from your account. As with most computing activities I want to do this from [[https://www.gnu.org/s/emacs/][emacs]] because.. Well if you are an emacs user you will understand!
