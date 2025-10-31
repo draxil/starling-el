@@ -1,14 +1,13 @@
 *Migration to codeberg* Note if you're seeing this on github, I'm moving primary development to [[https://codeberg.org/draxil/starling-el][codeberg]]. I'll try and push to github for a transition period, but to be sure of freshness, best go there instead.
 
+[[https://melpa.org/#/starling][https://melpa.org/packages/starling-badge.svg]]
+
+
 * What is this?
 
 If you bank with [[https://www.starlingbank.com/][starling bank]], you can get a personal API token which lets you access information from your account. As with most computing activities I want to do this from [[https://www.gnu.org/s/emacs/][emacs]] because.. Well if you are an emacs user you will understand!
 
 Currently I use it to quickly glance at the state of my "spaces" from emacs, but more capibilities may follow. Depending on interest (mine and others!).
-
-* Warning!
-
-This is currently just at the very early "itch scratch" stage, so may change wildly or be abandoned.
 
 * Getting Started
 
@@ -34,19 +33,24 @@ On various platforms you can hook emacs into more sophisticated password managem
 
 ** Install this package
 
-There is no ELPA etc for this yet, if you happen to use straight + use-package:
+You can install this package from MELPA, see [[https://melpa.org/#/getting-started][here]]. Then you can use ~M-x package-install~ and search for starling.
+
+If you use use-package you perhaps want this recipie:
 
 #+begin_src elisp
-  (use-package plz
-  :straight t)
   (use-package starling
-  :straight `(starling :type git :host github :repo "draxil/starling-el"))
+    :ensure t)
+#+end_src
+
+Another variant, using use-package + straight and installing direct from the repo:
+
+#+begin_src elisp
+  (use-package starling
+  :straight `(starling :type git :host codeberg :repo "draxil/starling-el"))
 #+end_src
 
 
 Otherwise it's currently a case of cloning this repo and giving emacs access (see [[https://www.gnu.org/software/emacs/manual/html_node/emacs/Lisp-Libraries.html][here]] for clues). You'll need plz installed as well, using the method of your choice, or ~M-x package-install~ and choose plz.
-
-Proper packaging will probably come if you bug me :)
 
 ** Using the package
 

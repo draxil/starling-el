@@ -1,22 +1,35 @@
-;;; starling.el -- Staling bank info in emacs.  -*- lexical-binding: t -*-
+;;; starling.el --- Starling bank interaction  -*- lexical-binding: t -*-
 
-;; Copyright (C) 2024 Joe Higton
+;; Copyright (C) 2025 Joe Higton
 
 ;; Author: Joe Higton <draxil@gmail.com>
 ;; Contributors: Alex Drysdale <reissuecardboard@duck.com>
-;; Version: 0.1.2
-;; Homepage: https://github.com/draxil/starling-el
-;; Keywords: banking, finance
-;; Package-Requires: ((emacs "28") (plz "0.7.2"))"
+;; Version: 0.1.4
+;; Homepage: https://codeberg.org/draxil/starling-el
+;; Package-Requires: ((emacs "29.1") (plz "0.7.2"))
+;; Keywords: data, applications, banking
 
 ;;; Commentary:
-;;
+
 ;; Get info from your starling bank account in Emacs!
-;; See the Readme.org for more.
-;;
+
+;; See the Readme.org, or go to https://codeberg.org/draxil/starling-el
+;; for instructions on getting started.
+
 ;;; Licence:
-;;
-;; Please see the LICENCE file.
+
+;; This program is free software; you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <https://www.gnu.org/licenses/
 
 ;;; Code:
 
@@ -24,24 +37,40 @@
 (require 'auth-source)
 
 (defgroup starling ()
-  "starling bank module")
+  "Options for starling."
+  :group 'applications)
 
-(defcustom starling-show-accounts-as-spaces 't
+(defcustom starling-show-accounts-as-spaces t
   "Show account balances along with spaces."
   :type 'boolean
   :group 'starling)
 
-;; TODO options for dealing with multiple accounts.
+(defcustom starling-log-requests nil
+  "When set log all requests with messages."
+  :type 'boolean
+  :group 'starling)
+
+(defvar-local starling--current-account nil
+  "The current account in use.")
+
+(defvar-local starling--current-category nil
+  "The current category we're looking at in this buffer.")
+
+(defvar-local starling--current-category-accounts nil
+  "Stores account associations for categories.")
+
+;; FUTURE options for dealing with multiple accounts.
 
 (defun starling--url-base ()
-  ""
+  "The baseurl for the api."
   "https://api.starlingbank.com/")
 
 (defun starling--url (path)
-  "build a full url for path"
+  "Build a full url for PATH."
   (concat (starling--url-base) path))
 
 (defun starling--key ()
+  "Get the starling API Key."
   (let ((key
          (auth-source-pick-first-password
           :host "api.starlingbank.com"
@@ -55,24 +84,28 @@
 
 
 (defun starling--headers (body)
-  ""
+  "Construct the standard starling headers for BODY."
   `(("Authorization" . ,(concat "Bearer " (starling--key)))
     ,(when body
        '("Content-type" . "application/json"))))
 
 (defun starling--get-accounts ()
-  "get the list of accounts"
+  "Get the list of accounts."
   (starling--do 'get "api/v2/accounts"))
 
 
 (defun starling--do (verb path &optional body)
   "Call the Starling API, and decode the response from JSON to an alist.
 
-VERB is a HTTP verb, e.g 'get.
+VERB is a HTTP verb, e.g \='get.
 PATH is the path (with no leading slash) of the call you want to
 make, e.g api/v2/accounts
-BODY optional, body to send in the request (TODO, not actually any use for this yet)."
-  ;; TODO: things go wrong!
+BODY optional, body to send in the request."
+
+  (when starling-log-requests
+    (message "%s %s %s" verb path body))
+
+  ;; FUTURE: better error handling!
   (let* ((body-encoded
           (when body
             (json-encode body)))
@@ -90,23 +123,37 @@ BODY optional, body to send in the request (TODO, not actually any use for this 
     req))
 
 (defun starling--main-account ()
-  ;; TODO: not fault tolerant, assumes first account is the one!
-  ;; ..which is dumb.
-  ;; TODO: cache?
+  "Get the main starling account."
+  ;; FUTURE: not fault tolerant, assumes first account is the one!
+  ;; ..which is dumb. Could at least respect account type primary?
+  ;; FUTURE: cache?
   (let ((accounts (alist-get 'accounts (starling--get-accounts))))
     (cond
      ((arrayp accounts)
       (aref accounts 0)))))
 
+(defun starling--accounts ()
+  "Get the main starling account."
+  (alist-get 'accounts (starling--get-accounts)))
+
+(defun starling--get-current-account ()
+  "Get the currently selected account uid."
+  (cond
+   ((not starling--current-account)
+    (setq starling--current-account (starling--main-account-uuid)))
+   (starling--current-account)))
+
 (defun starling--main-account-uuid ()
+  "Get the UUID for the main account."
   (alist-get 'accountUid (starling--main-account)))
 
 (defun starling--main-account-default-category ()
+  "Get the main account's default category."
   (alist-get 'defaultCategory (starling--main-account)))
 
 
 (defun starling--get-spaces ()
-  "fetch current state of spaces"
+  "Fetch current state of spaces."
   (starling--do
    'get
    (concat
@@ -114,7 +161,8 @@ BODY optional, body to send in the request (TODO, not actually any use for this 
 
 
 (defun starling-space-table ()
-  ;; TODO process all accounts?
+  "Build the starling space table."
+  ;; FUTURE process all accounts?
   (let ((spaces (starling--get-spaces)))
     (append
      (mapcar
@@ -137,7 +185,9 @@ BODY optional, body to send in the request (TODO, not actually any use for this 
        (mapcar
         (lambda (balance)
           (list
-           (alist-get 'uuid balance)
+           ;; we need to store the account and the category for accounts:
+           `((category . ,(alist-get 'uuid balance))
+             (account . ,(alist-get 'account-uid balance)))
            (vector
             (alist-get 'name balance)
             (starling--display-cash
@@ -145,30 +195,37 @@ BODY optional, body to send in the request (TODO, not actually any use for this 
         (starling--account-display-balances))))))
 
 (defun starling--display-cash (cash)
-  "Display a starling cash value."
-  ;; TODO care for currency?
+  "Display formatting for CASH."
+  ;; FUTURE care for currency?
   (starling--to-major (alist-get 'minorUnits cash)))
 
 (defun starling--to-major (units)
-  "Convert minor UNITS (pence cents) to major (pounds dollars).   
+  "Convert minor UNITS (pence cents) to major (pounds dollars).
 Also make it a string, for display purposes."
   (format "%.2f" (/ units 100.00)))
-;;(/ units 100.00)
 
 (defun starling--account-display-balances ()
-  "Get account balances."
-  ;; FUTURE: option to pick which balance to display
-  ;; TODO: other accounts?
-  ;; TODO: other name?
-  (let* ((main-uuid (starling--main-account-uuid))
-         (main-account
-          (starling--do
-           'get (concat "api/v2/accounts/" main-uuid "/balance"))))
-    `((
-       ;; TODO: real name?
-       (name . "Main account")
-       (balance . (,(alist-get 'effectiveBalance main-account)))
-       (uuid . ,(starling--main-account-default-category))))))
+  "Get balances for accounts."
+  (mapcar
+   (lambda (account)
+     `((name . ,(alist-get 'name account))
+       (balance
+        .
+        ,(starling--get-effective-account-balance
+          (alist-get 'accountUid account)))
+       (account-uid . ,(alist-get 'accountUid account))
+       ;; FUTURE: should be category-uid, or similar.
+       (uuid . ,(alist-get 'defaultCategory account))))
+   (starling--accounts)))
+
+(defun starling--get-effective-account-balance (account-uid)
+  "Get ACCOUNT-UID balance."
+  (list
+   (alist-get
+    'effectiveBalance
+    (starling--do
+     'get (concat "api/v2/accounts/" account-uid "/balance")))))
+
 
 (defvar-keymap starling-spaces-mode-map
   :parent
@@ -186,8 +243,9 @@ Also make it a string, for display purposes."
  (setq tabulated-list-sort-key '("Name" . nil))
  (tabulated-list-init-header))
 
+;;;###autoload
 (defun starling-spaces ()
-  "Shows the current balances of your Starling Spaces. "
+  "Show the current balances of your Starling Spaces."
   (interactive)
   (pop-to-buffer "*Starling Spaces*" nil)
   (starling-spaces-mode)
@@ -195,28 +253,30 @@ Also make it a string, for display purposes."
   (tabulated-list-print 1))
 
 (defun starling--txns-since ()
+  "The time we get transactions since."
   (format-time-string "%FT00:00:00Z"
                       (- (time-convert (current-time) 'integer)
                          2592000)))
 
-(defvar-local starling--current-category nil
-  "the current category we're looking at in this buffer")
-
 (defun starling--maybe-show-transactions ()
   "Possibly show transactions, if we're on a line with an id."
   (interactive)
-  (let ((starling--current-category (tabulated-list-get-id)))
-    (when starling--current-category
-      (starling--do-catgeory-transactions
-       (starling--main-account-uuid) starling--current-category))))
+  (let ((current (tabulated-list-get-id)))
+    (when current
+      (if (listp current)
+          (starling--do-category-transactions
+           (alist-get 'account current) (alist-get 'category current))
+        (starling--do-category-transactions
+         (starling--main-account-uuid) current)))))
 
-(defun starling--do-catgeory-transactions
+(defun starling--do-category-transactions
     (account-uuid category-uuid &optional txn-uuid)
   "Get and show transactions for ACCOUNT-UUID and CATEGORY-UUID.
 Optionally pick TXN-UUID."
+  (setq starling--current-account account-uuid)
   (starling--show-transactions (starling--do
                                 'get
-                                ;; TODO: sensible date:
+                                ;; FUTURE: sensible date:
                                 (concat
                                  "api/v2/feed/account/"
                                  account-uuid
@@ -237,7 +297,7 @@ Optionally pick TXN-UUID."
 
       (concat
        "api/v2/feed/account/"
-       (starling--main-account-uuid)
+       (starling--get-current-account)
        "/category/"
        starling--current-category
        "/"
@@ -247,7 +307,7 @@ Optionally pick TXN-UUID."
   :parent
   (make-composed-keymap tabulated-list-mode-map)
   "RET"
-  ;; TODO: these should be "public"?
+  ;; FUTURE: these should be "public"?
   #'starling--maybe-show-transaction
   "c"
   #'starling--maybe-set-category
@@ -259,7 +319,7 @@ Optionally pick TXN-UUID."
  tabulated-list-mode
  "starling-transactions-mode"
  "Mode for viewing Starling transactions."
- ;; TODO customisable columns?
+ ;; FUTURE customisable columns?
  (setq tabulated-list-format
        [("Who" 20 t)
         ("Ref" 30 t)
@@ -271,14 +331,16 @@ Optionally pick TXN-UUID."
 (defun starling--show-transactions (txns category &optional txn-uuid)
   "Show the current balances of your Starling Spaces for TXNS in CATEGORY.
 Optionally pick TXN-UUID."
-  ;; TODO space name?
-  (pop-to-buffer "*Starling Trnsactions*" nil)
-  (starling-transactions-mode)
-  (setq starling--current-category category)
-  (setq tabulated-list-entries (starling-transactions--table txns))
-  (tabulated-list-print 1)
-  (when txn-uuid
-    (starling--find-txn txn-uuid)))
+  ;; FUTURE space name?
+  (let ((account (starling--get-current-account)))
+    (pop-to-buffer "*Starling Transactions*" nil)
+    (starling-transactions-mode)
+    (setq starling--current-account account)
+    (setq starling--current-category category)
+    (setq tabulated-list-entries (starling-transactions--table txns))
+    (tabulated-list-print 1)
+    (when txn-uuid
+      (starling--find-txn txn-uuid))))
 
 (defun starling--find-txn (txn-uuid)
   "Find the TXN-UUID if in buffer."
@@ -413,8 +475,9 @@ Optionally pick TXN-UUID."
   (setq tabulated-list-entries (starling-insights--table insights))
   (tabulated-list-print 1))
 
+;;;###autoload
 (defun starling-insights ()
-  "Shows the starling insights for the current month."
+  "Show the starling insights for the current month."
   (interactive)
   (let ((insights (starling--get-spending-insights)))
     (starling--show-insights insights)))
@@ -423,10 +486,10 @@ Optionally pick TXN-UUID."
  starling-transaction-mode
  special-mode
  "starling-transaction-mode"
- "Mode for viewing a starling transaction")
+ "Mode for viewing a starling transaction.")
 
 (defun starling--show-transaction (txn)
-  "Show transaction TXN"
+  "Show transaction TXN."
   (pop-to-buffer "*Starling Transaction*" nil)
   (starling-transaction-mode)
   (cl-flet
@@ -447,26 +510,28 @@ Optionally pick TXN-UUID."
      (starling--transaction-field "Ref" (get-field 'reference))
      (starling--transaction-field "Time" (starling--txn-time txn))
      (starling--transaction-field
-      "Category" (get-field 'spendingCategory))
-     ;; TODO: more fields!
+      "Category"
+      (starling--format-category (get-field 'spendingCategory)))
+     ;; FUTURE: more fields!
      )))
 
 (defun starling--transaction-field (label value)
   "Show a transaction field for LABEL and VALUE, skipping nil VALUE ones."
   (when (not (equal value 'nil))
     (insert (propertize (format "%s: " label) 'face 'bold))
-    ;; TODO: must be a better way? But some alignment.
+    ;; FUTURE: must be a better way? But some alignment.
     (insert (make-string (- 10 (length label)) 32))
     (insert value)
     (insert "\n")))
 
+;;;###autoload
 (defun starling-transactions ()
   "Show transactions, right now show the main account."
   (interactive)
   (let ((account-uuid (starling--main-account-uuid))
         (category-uuid (starling--main-account-default-category)))
     (if (and account-uuid category-uuid)
-        (starling--do-catgeory-transactions
+        (starling--do-category-transactions
          account-uuid category-uuid)
       (error "No account details found"))))
 
@@ -477,7 +542,7 @@ Optionally pick TXN-UUID."
     (starling--set-spending-category (tabulated-list-get-id))))
 
 (defun starling--set-spending-category (txn-uuid)
-  "Prompt for a new spending category for TXN-UUID"
+  "Prompt for a new spending category for TXN-UUID."
   (interactive)
   (starling--maybe-action-spending-category
    txn-uuid
@@ -485,7 +550,7 @@ Optionally pick TXN-UUID."
     "New spending category: " (starling--spending-categories)
     nil 't)))
 
-;; Would be nice if starling could give us these :( 
+;; Would be nice if starling could give us these :(
 (defun starling--spending-categories ()
   "List of possible spending categories."
   '(BIKE
@@ -576,7 +641,7 @@ Optionally pick TXN-UUID."
 
 (defun starling--maybe-action-spending-category
     (txn-uuid new-category)
-  "Set the spending category for TXN-UUID to NEW-CATEGORY"
+  "Set the spending category for TXN-UUID to NEW-CATEGORY."
 
   (when (and txn-uuid new-category starling--current-category)
     (starling--do
@@ -590,15 +655,14 @@ Optionally pick TXN-UUID."
       txn-uuid
       "/spending-category/")
      `((spendingCategory . ,new-category))
-     ;; TODO: possibility to do it permnanently, and for old tnxs
+     ;; FUTURE: possibility to do it permnanently, and for old tnxs
      )
     (starling--refresh-transactions)))
 
 (defun starling--refresh-transactions ()
   "Refresh a transactions view."
-  ;; TODO: option jump to the right place via uuid not via luck
-  (starling--do-catgeory-transactions
-   (starling--main-account-uuid) starling--current-category
+  (starling--do-category-transactions
+   (starling--get-current-account) starling--current-category
    (tabulated-list-get-id)))
 
 (defun starling-refresh-current-transaction-view ()
@@ -607,3 +671,4 @@ Optionally pick TXN-UUID."
   (when starling--current-category
     (starling--refresh-transactions)))
 (provide 'starling)
+;;; starling.el ends here
